@@ -448,7 +448,7 @@ static int userpass_auth(int fd)
     if (strncmp((char*)(tmp+1), server_user, *tmp) != 0) goto auth_err;
 
     tmp += *tmp + 1;
-    if (strncmp((char*)(tmp+1), server_pass, *tmp) != 0) goto auth_err;
+    if (server_pass && strncmp((char*)(tmp+1), server_pass, *tmp) != 0) goto auth_err;
 
     buf[1] = 0;
     if (write(fd, buf, 2) != 2) return -1;
