@@ -1,6 +1,7 @@
 CC=cc
 CFLAGS=-Wall -Wextra -g
 LIBS=-lpthread
+BINDSTPATH=/usr/local/bin
 
 all: proxyrot
 
@@ -13,4 +14,11 @@ proxyrot: proxyrot.o util.o
 clean:
 	rm -f *.o *.out proxyrot
 
-.PHONY: clean all
+install: all
+	mkdir -p $(BINDSTPATH)
+	install -m755 proxyrot $(BINDSTPATH)
+
+uninstall:
+	rm -f $(BINDSTPATH)/proxyrot
+
+.PHONY: clean all install uninstall
