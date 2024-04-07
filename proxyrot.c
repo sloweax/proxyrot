@@ -1,28 +1,17 @@
+#include "proxy.h"
+#include "socks5.h"
 #include "util.h"
 #include <arpa/inet.h>
-#include <assert.h>
 #include <ctype.h>
 #include <errno.h>
 #include <getopt.h>
 #include <netdb.h>
-#include <netinet/in.h>
-#include <poll.h>
 #include <pthread.h>
 #include <signal.h>
-#include <stdarg.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
-
-typedef struct proxy_info {
-    char *proto;
-    char *host;
-    char *port;
-    char *user;
-    char *pass;
-    struct proxy_info *next;
-} proxy_info;
 
 #define VERSION "0.1.0"
 #define PORT "1080"
@@ -44,17 +33,10 @@ proxy_info *proxies_tail;
 pthread_mutex_t proxies_lock;
 pthread_t *threads;
 
-static int bridge_fd(int fd1, int fd2);
-static int connect_proxy(const proxy_info *proxy);
 static int create_server(const char *host, const char *port, int backlog);
-static int is_supported_proto(const char *proto);
-static int parse_identifier(const char *str, char **field, char **endptr);
-static int parse_proxy_info(const char *line, proxy_info *p);
 static proxy_info *get_next_proxy(void);
-static size_t get_identifier_len(const char *str, char **startptr);
 static void load_proxy_file(const char *path);
 static void cleanup(void);
-static void free_proxy_info(proxy_info *p);
 static void int_handler(int sig);
 static void usage(int argc, char **argv);
 static void *work(void *arg);
@@ -164,74 +146,6 @@ int main(int argc, char **argv)
     cleanup();
 
     return 0;
-}
-
-static size_t get_identifier_len(const char *str, char **startptr)
-{
-    size_t r = 0;
-    while (isspace(*str)) str++;
-    if (startptr) *startptr = (char*)str;
-    while (*str && !isspace(*str++)) r++;
-    return r;
-}
-
-static int parse_identifier(const char *str, char **field, char **endptr)
-{
-    char *tmp;
-    size_t idlen = get_identifier_len(str, &tmp);
-    if (idlen == 0) return 0;
-    char *id = strndup(tmp, idlen);
-    if (id == NULL) return -1;
-    *field = id;
-    if (endptr) *endptr = tmp + idlen;
-    return 0;
-}
-
-static void free_proxy_info(proxy_info *p)
-{
-    if (p->host)  free(p->host);
-    if (p->port)  free(p->port);
-    if (p->user)  free(p->user);
-    if (p->pass)  free(p->pass);
-    if (p->proto) free(p->proto);
-    p->host = p->port = p->user = p->pass = p->proto = NULL;
-}
-
-static int is_supported_proto(const char *proto)
-{
-    if (strcmp(proto, "socks5")  == 0) return 1;
-    if (strcmp(proto, "socks5h") == 0) return 1;
-    return 0;
-}
-
-static int parse_proxy_info(const char *line, proxy_info *p)
-{
-    memset(p, 0, sizeof(*p));
-    char *tmp;
-
-    int r = parse_identifier(line, &p->proto, &tmp);
-    if (r != 0 || p->proto == NULL) goto err;
-    if (!is_supported_proto(p->proto)) goto err;
-
-    r = parse_identifier(tmp, &p->host, &tmp);
-    if (r != 0 || p->host == NULL) goto err;
-
-    r = parse_identifier(tmp, &p->port, &tmp);
-    if (r != 0 || p->port == NULL) goto err;
-
-    if (strncmp(p->proto, "socks5", 6) == 0) {
-        r = parse_identifier(tmp, &p->user, &tmp);
-        if (r != 0) goto err;
-
-        r = parse_identifier(tmp, &p->pass, &tmp);
-        if (r != 0) goto err;
-    }
-
-    return 0;
-
-err:
-    free_proxy_info(p);
-    return -1;
 }
 
 static int create_server(const char *host, const char *port, int backlog)
@@ -355,82 +269,6 @@ static proxy_info *get_next_proxy(void)
     return proxy;
 }
 
-static int socks5_userpass_auth(proxy_info *proxy, int fd)
-{
-    // ver + ulen + max uname + plen + max passwd
-    unsigned char buf[1 + 1 + 255 + 1 + 255];
-    unsigned char *tmp = buf;
-
-    size_t ulen = proxy->user ? strlen(proxy->user) : 0;
-    size_t plen = proxy->pass ? strlen(proxy->pass) : 0;
-
-    *tmp++ = 1;
-    *tmp++ = ulen & 0xff;
-    if (proxy->user)
-        memcpy(tmp, proxy->user, ulen);
-    tmp+=ulen;
-    *tmp++ = plen & 0xff;
-    if (proxy->pass)
-        memcpy(tmp, proxy->pass, plen);
-    tmp+=plen;
-
-    if (write(fd, buf, tmp - buf) != tmp - buf) return -1;
-
-    if (read(fd, buf, 2) != 2) return -1;
-
-    if (buf[0] != 1) return -1;
-
-    if (buf[1] != 0) return -1;
-
-    return 0;
-}
-
-static int socks5_auth(proxy_info *proxy, int fd)
-{
-    // ver + nmethods + methods
-    unsigned char buf[4];
-    buf[0] = 5;
-    buf[1] = proxy->user ? 2 : 1;
-
-    if (proxy->user) {
-        buf[2] = 2;
-        buf[3] = 0;
-    } else {
-        buf[2] = 0;
-    }
-
-    size_t buflen = proxy->user ? 4 : 3;
-    if (write(fd, buf, buflen) != (ssize_t)buflen) return -1;
-
-    if (read(fd, buf, 2) != 2) return -1;
-
-    if (buf[0] != 5) return -1;
-
-    switch (buf[1]) {
-    case 0:
-        return 0;
-    case 2:
-        return socks5_userpass_auth(proxy, fd);
-    default:
-        return -1;
-    }
-}
-
-static void socks5_handler(proxy_info *proxy, int cfd, int pfd)
-{
-    int r = socks5_auth(proxy, pfd);
-    if (r != 0) {
-        fprintf(stderr, "auth negotiation with %s %s:%s failed\n", proxy->proto, proxy->host, proxy->port);
-        return;
-    }
-
-    // TODO convert socks5 to socks5h if needed
-
-    if (bridge_fd(cfd, pfd) != 0) {
-        fprintf(stderr, "connection failed\n");
-    }
-}
-
 static void handler(proxy_info *proxy, int cfd, int pfd)
 {
     return socks5_handler(proxy, cfd, pfd);
@@ -485,32 +323,6 @@ static int auth(int fd)
 
     buf[1] = 0xff;
     write(fd, buf, 2);
-    return -1;
-}
-
-static int connect_proxy(const proxy_info *proxy)
-{
-    struct addrinfo hints, *res;
-    memset(&hints, 0, sizeof(hints));
-    hints.ai_family = AF_UNSPEC;
-    hints.ai_protocol = IPPROTO_TCP;
-    hints.ai_flags = AI_PASSIVE;
-
-    if (getaddrinfo(proxy->host, proxy->port, &hints, &res) != 0)
-        return -1;
-
-    int fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
-    if (fd == -1) goto free_err;
-
-    if (connect(fd, res->ai_addr, res->ai_addrlen) != 0) goto close_err;
-
-    freeaddrinfo(res);
-    return fd;
-
-close_err:
-    close(fd);
-free_err:
-    freeaddrinfo(res);
     return -1;
 }
 
@@ -569,50 +381,6 @@ static void *work(void *arg)
     }
 
     return NULL;
-}
-
-static int bridge_fd(int fd1, int fd2)
-{
-    char buf[4096];
-    ssize_t rn1, rn2, wn1, wn2, lrn1, lrn2;
-
-    lrn1 = lrn2 = 0;
-
-    struct pollfd fds[2];
-
-    fds[0].fd     = fd1;
-    fds[0].events = POLLIN;
-    fds[1].fd     = fd2;
-    fds[1].events = POLLIN;
-
-    while (1) {
-        rn1 = rn2 = fds[0].revents = fds[1].revents = 0;
-
-        int e = poll(fds, 2, 2000);
-        if (e == -1) return 1;
-
-        if ((fds[0].revents | fds[1].revents) & (POLLHUP | POLLERR | POLLNVAL))
-            return 1;
-
-        if (fds[0].revents & POLLIN) {
-            rn1 = read(fd1, buf, sizeof(buf));
-            if (rn1 == -1) return 1;
-            wn2 = write(fd2, buf, rn1);
-            if (wn2 != rn1) return 1;
-        }
-
-        if (fds[1].revents & POLLIN) {
-            rn2 = read(fd2, buf, sizeof(buf));
-            if (rn2 == -1) return 1;
-            wn1 = write(fd1, buf, rn2);
-            if (wn1 != rn2) return 1;
-        }
-
-        if ((rn1 | lrn1 | rn2 | lrn2) == 0) return 0;
-
-        lrn1 = rn1;
-        lrn2 = rn2;
-    }
 }
 
 static void int_handler(int sig)

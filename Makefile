@@ -8,7 +8,7 @@ all: proxyrot
 %.o: %.c
 	$(CC) $(CFLAGS) $< -c -o $@
 
-proxyrot: proxyrot.o util.o
+proxyrot: proxyrot.o util.o socks5.o proxy.o
 	$(CC) $(CFLAGS) $(LIBS) $^ -o $@
 
 clean:

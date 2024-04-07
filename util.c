@@ -1,7 +1,9 @@
 #include "util.h"
+#include <poll.h>
 #include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
+#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -39,4 +41,48 @@ void tdie(const char *fmt, ...)
     }
 
     pthread_exit(NULL);
+}
+
+int bridge_fd(int fd1, int fd2)
+{
+    char buf[4096];
+    ssize_t rn1, rn2, wn1, wn2, lrn1, lrn2;
+
+    lrn1 = lrn2 = 0;
+
+    struct pollfd fds[2];
+
+    fds[0].fd     = fd1;
+    fds[0].events = POLLIN;
+    fds[1].fd     = fd2;
+    fds[1].events = POLLIN;
+
+    while (1) {
+        rn1 = rn2 = fds[0].revents = fds[1].revents = 0;
+
+        int e = poll(fds, 2, 2000);
+        if (e == -1) return 1;
+
+        if ((fds[0].revents | fds[1].revents) & (POLLHUP | POLLERR | POLLNVAL))
+            return 1;
+
+        if (fds[0].revents & POLLIN) {
+            rn1 = read(fd1, buf, sizeof(buf));
+            if (rn1 == -1) return 1;
+            wn2 = write(fd2, buf, rn1);
+            if (wn2 != rn1) return 1;
+        }
+
+        if (fds[1].revents & POLLIN) {
+            rn2 = read(fd2, buf, sizeof(buf));
+            if (rn2 == -1) return 1;
+            wn1 = write(fd1, buf, rn2);
+            if (wn1 != rn2) return 1;
+        }
+
+        if ((rn1 | lrn1 | rn2 | lrn2) == 0) return 0;
+
+        lrn1 = rn1;
+        lrn2 = rn2;
+    }
 }
