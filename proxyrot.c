@@ -308,20 +308,20 @@ static int auth(int fd)
     if (buf[0] != 5) return -1;
 
     if (server_flags & FLAG_NO_AUTH && memchr(&buf[2], 0, buf[1])) {
-        buf[1] = 0;
+        buf[1] = SOCKS5_NO_AUTH;
         if (write(fd, buf, 2) != 2)
             return -1;
         return 0;
     }
 
     if (server_flags & FLAG_USERPASS_AUTH && memchr(&buf[2], 2, buf[1])) {
-        buf[1] = 2;
+        buf[1] = SOCKS5_USERPASS_AUTH;
         if (write(fd, buf, 2) != 2)
             return -1;
         return userpass_auth(fd);
     }
 
-    buf[1] = 0xff;
+    buf[1] = SOCKS5_INVALID_AUTH;
     write(fd, buf, 2);
     return -1;
 }
