@@ -104,8 +104,7 @@ int main(int argc, char **argv)
         }
     }
 
-    threads = malloc(sizeof(pthread_t[nworkers]));
-    if (threads == NULL) die("malloc:");
+    threads = emalloc(sizeof(pthread_t[nworkers]));
 
     if (proxies == NULL)
         die("missing proxies");
@@ -232,8 +231,7 @@ static void load_proxy_file(const char *path)
         while(isspace(*tmp)) tmp++;
         if (*tmp == '#' || *tmp == '\0') continue;
 
-        p = malloc(sizeof(*p));
-        if (p == NULL) die("malloc:");
+        p = emalloc(sizeof(*p));
 
         if (parse_proxy_info(tmp, p) != 0)
             die("could not parse proxy `%s`", line);

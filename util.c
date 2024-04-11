@@ -7,6 +7,13 @@
 #include <stdlib.h>
 #include <string.h>
 
+void *emalloc(size_t sz)
+{
+    void *r = malloc(sz);
+    if (r == NULL) die("malloc:");
+    return r;
+}
+
 void die(const char *fmt, ...)
 {
     va_list ap;
