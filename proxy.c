@@ -1,4 +1,5 @@
 #include "proxy.h"
+#include "util.h"
 #include <ctype.h>
 #include <netdb.h>
 #include <stdlib.h>
@@ -8,7 +9,7 @@
 static int parse_identifier(const char *str, char **field, char **endptr);
 static size_t get_identifier_len(const char *str, char **startptr);
 
-int connect_proxy(const proxy_info *proxy)
+int connect_proxy(const proxy_info *proxy, int timeout)
 {
     struct addrinfo hints, *res;
     memset(&hints, 0, sizeof(hints));
@@ -21,6 +22,8 @@ int connect_proxy(const proxy_info *proxy)
 
     int fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (fd == -1) goto free_err;
+
+    config_socket(fd, timeout);
 
     if (connect(fd, res->ai_addr, res->ai_addrlen) != 0) goto close_err;
 

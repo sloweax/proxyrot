@@ -3,9 +3,16 @@
 #include <pthread.h>
 #include <stdarg.h>
 #include <stdio.h>
-#include <unistd.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
+#include <unistd.h>
+
+void config_socket(int fd, int timeout)
+{
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &(struct timeval){.tv_sec = timeout}, sizeof(struct timeval));
+    setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &(struct timeval){.tv_sec = timeout}, sizeof(struct timeval));
+}
 
 void *emalloc(size_t sz)
 {

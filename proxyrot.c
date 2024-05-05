@@ -17,12 +17,14 @@
 #define PORT "1080"
 #define ADDR "0.0.0.0"
 #define WORKERS 8
+#define TIMEOUT 10
 
 #define FLAG_NO_AUTH       (1 << 0)
 #define FLAG_USERPASS_AUTH (1 << 1)
 
 char *server_pass;
 char *server_user;
+int timeout;
 int nworkers;
 int run;
 int serverfd;
@@ -54,6 +56,7 @@ int main(int argc, char **argv)
     char *addr = ADDR, *port = PORT;
     int opt;
     nworkers = WORKERS;
+    timeout = TIMEOUT;
 
     static struct option long_options[] = {
         {"help"    , no_argument      , NULL, 'h'},
@@ -64,10 +67,11 @@ int main(int argc, char **argv)
         {"proxies" , required_argument, NULL, 'P'},
         {"userpass", required_argument, NULL, 'u'},
         {"workers" , required_argument, NULL, 'w'},
+        {"timeout" , required_argument, NULL, 't'},
         {NULL      , 0                , NULL, 0}
     };
 
-    while((opt = getopt_long(argc, argv, ":hvna:p:u:w:P:", long_options, NULL)) != -1) {
+    while((opt = getopt_long(argc, argv, ":hvna:p:u:w:P:t:", long_options, NULL)) != -1) {
         switch(opt) {
         case 'u':
             {
@@ -91,6 +95,11 @@ int main(int argc, char **argv)
         case 'w':
             nworkers = atoi(optarg);
             if (nworkers <= 0)
+                die("%s %s is invalid", argv[optind-2], optarg, argv[0]);
+            break;
+        case 't':
+            timeout = atoi(optarg);
+            if (timeout <= 0)
                 die("%s %s is invalid", argv[optind-2], optarg, argv[0]);
             break;
         case 'n': server_flags |= FLAG_NO_AUTH; break;
@@ -197,7 +206,8 @@ static void usage(int argc, char **argv)
         "     -p,--port PORT                 listen on PORT ("PORT" by default)\n"
         "     -a,--addr ADDR                 bind on ADDR ("ADDR" by default)\n"
         "     -w,--workers WORKERS           number of WORKERS (%d by default)\n"
-    , argv[0], WORKERS);
+        "     -t,--timeout SECONDS           set timeout (%d by default)\n"
+    , argv[0], WORKERS, TIMEOUT);
 }
 
 static void cleanup(void)
@@ -346,6 +356,8 @@ static void *work(void *arg)
         if (cfd == -1)
             tdie("accept:");
 
+        config_socket(cfd, timeout);
+
         char clihost[INET6_ADDRSTRLEN];
         clihost[0] = 0;
 
@@ -368,7 +380,7 @@ static void *work(void *arg)
 
         proxy_info *proxy = get_next_proxy();
 
-        int pfd = connect_proxy(proxy);
+        int pfd = connect_proxy(proxy, timeout);
         if (pfd == -1) {
             fprintf(stderr, "could not connect to proxy %s %s:%s\n", proxy->proto, proxy->host, proxy->port);
             close(cfd);
