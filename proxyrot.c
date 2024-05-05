@@ -126,6 +126,9 @@ int main(int argc, char **argv)
     if (signal(SIGINT, int_handler) != 0)
         die("signal:");
 
+    if (signal(SIGPIPE, SIG_IGN) != 0)
+        die("signal:");
+
     proxies_tail->next = proxies;
     current_proxy = proxies;
     run = 1;
