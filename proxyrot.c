@@ -370,8 +370,6 @@ static void *work(void *arg)
             break;
         }
 
-        printf("connection from %s\n", clihost);
-
         if (auth(cfd) != 0) {
             fprintf(stderr, "auth negotiation failed\n");
             close(cfd);
@@ -379,6 +377,8 @@ static void *work(void *arg)
         }
 
         proxy_info *proxy = get_next_proxy();
+
+        printf("connection from %s through %s %s:%s\n", clihost, proxy->proto, proxy->host, proxy->port);
 
         int pfd = connect_proxy(proxy, timeout);
         if (pfd == -1) {
