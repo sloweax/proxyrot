@@ -32,17 +32,12 @@ socks5 proxy.com 1080 user
 $ proxyrot -n -P proxies &
 listening on 0.0.0.0:1080
 
-$ curl ifconfig.me -x socks5://127.0.0.1:1080
+$ for i in {1..10}; do curl ifconfig.me -x socks5://127.0.0.1:1080; echo; done
 77.77.77.77
-
-$ curl ifconfig.me -x socks5://127.0.0.1:1080
 11.22.33.44
-
-$ curl ifconfig.me -x socks5://127.0.0.1:1080
 43.85.12.2
-
-$ curl ifconfig.me -x socks5://127.0.0.1:1080
 77.77.77.77
-
+11.22.33.44
+43.85.12.2
 ...
 ```
