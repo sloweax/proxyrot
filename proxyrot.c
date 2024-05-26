@@ -235,6 +235,7 @@ static void load_proxy_file(const char *path)
     if (f == NULL) die("fopen:");
 
     while ((read = getline(&line, &len, f)) != -1) {
+        if (read == 0) continue;
         if (line[read - 1] == '\n') {
             line[read - 1] = 0;
             read--;
