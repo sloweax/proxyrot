@@ -76,7 +76,7 @@ void socks5_handler(proxy_info *proxy, int cfd, int pfd)
         return;
     }
 
-    // TODO convert socks5 to socks5h if needed
+    // TODO convert socks5h to socks5 if needed
 
     if (bridge_fd(cfd, pfd) != 0) {
         fprintf(stderr, "connection failed\n");
