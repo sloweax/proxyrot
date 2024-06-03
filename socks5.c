@@ -4,7 +4,10 @@
 #include <stdio.h>
 #include <string.h>
 
-int socks5_auth(proxy_info *proxy, int fd)
+static int socks5_auth(proxy_info *proxy, int fd);
+static int socks5_userpass_auth(proxy_info *proxy, int fd);
+
+static int socks5_auth(proxy_info *proxy, int fd)
 {
     // ver + nmethods + methods
     unsigned char buf[4];
@@ -35,22 +38,7 @@ int socks5_auth(proxy_info *proxy, int fd)
     }
 }
 
-void socks5_handler(proxy_info *proxy, int cfd, int pfd)
-{
-    int r = socks5_auth(proxy, pfd);
-    if (r != 0) {
-        fprintf(stderr, "auth negotiation with %s %s:%s failed\n", proxy->proto, proxy->host, proxy->port);
-        return;
-    }
-
-    // TODO convert socks5 to socks5h if needed
-
-    if (bridge_fd(cfd, pfd) != 0) {
-        fprintf(stderr, "connection failed\n");
-    }
-}
-
-int socks5_userpass_auth(proxy_info *proxy, int fd)
+static int socks5_userpass_auth(proxy_info *proxy, int fd)
 {
     // ver + ulen + max uname + plen + max passwd
     unsigned char buf[1 + 1 + 255 + 1 + 255];
@@ -78,4 +66,19 @@ int socks5_userpass_auth(proxy_info *proxy, int fd)
     if (buf[1] != 0) return -1;
 
     return 0;
+}
+
+void socks5_handler(proxy_info *proxy, int cfd, int pfd)
+{
+    int r = socks5_auth(proxy, pfd);
+    if (r != 0) {
+        fprintf(stderr, "auth negotiation with %s %s:%s failed\n", proxy->proto, proxy->host, proxy->port);
+        return;
+    }
+
+    // TODO convert socks5 to socks5h if needed
+
+    if (bridge_fd(cfd, pfd) != 0) {
+        fprintf(stderr, "connection failed\n");
+    }
 }
