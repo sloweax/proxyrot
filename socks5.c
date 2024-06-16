@@ -68,17 +68,20 @@ static int socks5_userpass_auth(proxy_info *proxy, int fd)
     return 0;
 }
 
-void socks5_handler(proxy_info *proxy, int cfd, int pfd)
+int socks5_handler(proxy_info *proxy, int cfd, int pfd)
 {
     int r = socks5_auth(proxy, pfd);
     if (r != 0) {
         fprintf(stderr, "auth negotiation with %s %s:%s failed\n", proxy->proto, proxy->host, proxy->port);
-        return;
+        return -2;
     }
 
     // TODO convert socks5h to socks5 if needed
 
     if (bridge_fd(cfd, pfd) != 0) {
         fprintf(stderr, "connection failed\n");
+        return -1;
     }
+
+    return 0;
 }

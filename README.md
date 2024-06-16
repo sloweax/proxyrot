@@ -11,6 +11,7 @@ OPTION:
      -a,--addr ADDR                 bind on ADDR (0.0.0.0 by default)
      -w,--workers WORKERS           number of WORKERS (8 by default)
      -t,--timeout SECONDS           set timeout (10 by default)
+     -r,--retry                     if proxy connection fail, try another
 ```
 
 ## Build

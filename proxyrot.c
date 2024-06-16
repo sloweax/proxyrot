@@ -8,6 +8,7 @@
 #include <netdb.h>
 #include <pthread.h>
 #include <signal.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -24,6 +25,7 @@
 
 char *server_pass;
 char *server_user;
+bool retry = false;
 int timeout;
 int nworkers;
 int run;
@@ -62,6 +64,7 @@ int main(int argc, char **argv)
         {"help"    , no_argument      , NULL, 'h'},
         {"version" , no_argument      , NULL, 'v'},
         {"no-auth" , no_argument      , NULL, 'n'},
+        {"retry"   , no_argument      , NULL, 'r'},
         {"addr"    , required_argument, NULL, 'a'},
         {"port"    , required_argument, NULL, 'p'},
         {"proxies" , required_argument, NULL, 'P'},
@@ -71,7 +74,7 @@ int main(int argc, char **argv)
         {NULL      , 0                , NULL, 0}
     };
 
-    while((opt = getopt_long(argc, argv, ":hvna:p:u:w:P:t:", long_options, NULL)) != -1) {
+    while((opt = getopt_long(argc, argv, ":hvnra:p:u:w:P:t:", long_options, NULL)) != -1) {
         switch(opt) {
         case 'u':
             {
@@ -105,6 +108,7 @@ int main(int argc, char **argv)
         case 'n': server_flags |= FLAG_NO_AUTH; break;
         case 'a': addr = optarg; break;
         case 'p': port = optarg; break;
+        case 'r': retry = true; break;
         case 'h':
             usage(argc, argv);
             return 0;
@@ -207,6 +211,7 @@ static void usage(int argc, char **argv)
         "     -a,--addr ADDR                 bind on ADDR ("ADDR" by default)\n"
         "     -w,--workers WORKERS           number of WORKERS (%d by default)\n"
         "     -t,--timeout SECONDS           set timeout (%d by default)\n"
+        "     -r,--retry                     if proxy connection fail, try another\n"
     , argv[0], WORKERS, TIMEOUT);
 }
 
@@ -281,7 +286,7 @@ static proxy_info *get_next_proxy(void)
     return proxy;
 }
 
-static void handler(proxy_info *proxy, int cfd, int pfd)
+static int handler(proxy_info *proxy, int cfd, int pfd)
 {
     return socks5_handler(proxy, cfd, pfd);
 }
@@ -377,6 +382,8 @@ static void *work(void *arg)
             continue;
         }
 
+try_next_proxy:
+
         proxy_info *proxy = get_next_proxy();
 
         printf("connection from %s through %s %s:%s\n", clihost, proxy->proto, proxy->host, proxy->port);
@@ -384,11 +391,15 @@ static void *work(void *arg)
         int pfd = connect_proxy(proxy, timeout);
         if (pfd == -1) {
             fprintf(stderr, "could not connect to proxy %s %s:%s\n", proxy->proto, proxy->host, proxy->port);
+            if (retry) goto try_next_proxy;
             close(cfd);
             continue;
         }
 
-        handler(proxy, cfd, pfd);
+        if (handler(proxy, cfd, pfd) == -2 && retry) {
+            close(pfd);
+            goto try_next_proxy;
+        }
 
         close(pfd);
         close(cfd);
