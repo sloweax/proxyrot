@@ -4,10 +4,9 @@
 #include <stdio.h>
 #include <string.h>
 
-static int socks5_auth(proxy_info *proxy, int fd);
 static int socks5_userpass_auth(proxy_info *proxy, int fd);
 
-static int socks5_auth(proxy_info *proxy, int fd)
+int socks5_auth(proxy_info *proxy, int fd)
 {
     // ver + nmethods + methods
     unsigned char buf[4];
