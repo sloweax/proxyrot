@@ -1,8 +1,12 @@
 #include "socks5.h"
 #include "util.h"
-#include <unistd.h>
+#include <arpa/inet.h>
+#include <assert.h>
+#include <stdint.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <unistd.h>
 
 static int socks5_userpass_auth(proxy_info *proxy, int fd);
 
@@ -76,6 +80,25 @@ int socks5_handler(proxy_info *proxy, int cfd, int pfd)
         fprintf(stderr, "connection failed\n");
         return -1;
     }
+
+    return 0;
+}
+
+int socks5_chain(proxy_info *proxy, int fd)
+{
+    // TODO support for socks5 without domainname atyp
+    unsigned char reqbuf[4] = {5,1,0,3};
+    if (write(fd, reqbuf, sizeof(reqbuf)) != sizeof(reqbuf)) return 1;
+    size_t hostlen = strlen(proxy->host);
+    assert(hostlen <= 0xff);
+    uint16_t port = htons(atoi(proxy->port));
+    if (write(fd, &(unsigned char){(unsigned char)hostlen}, 1) != 1) return 1;
+    if (write(fd, proxy->host, hostlen) != (ssize_t)hostlen) return 1;
+    if (write(fd, &port, 2) != 2) return 1;
+
+    unsigned char repbuf[1+1+1+1+0xff+1+2];
+    if (read(fd, repbuf, sizeof(repbuf)) < 2) return 1;
+    if (repbuf[1] != 0) return 1;
 
     return 0;
 }

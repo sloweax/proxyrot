@@ -340,9 +340,21 @@ static int auth(int fd)
 
 static int handler(proxy_info *proxy, int cfd, int pfd)
 {
-    if (proxy_auth(proxy, pfd) != 0) {
-        fprintf(stderr, "auth negotiation with %s %s:%s failed\n", proxy->proto, proxy->host, proxy->port);
-        return -2;
+    proxy_info *cur = proxy;
+    for (;;) {
+        if (proxy_auth(cur, pfd) != 0) {
+            fprintf(stderr, "auth negotiation with proxy %s %s:%s failed\n", cur->proto, cur->host, cur->port);
+            return -2;
+        }
+
+        if (cur->chain == NULL) break;
+
+        if (proxy_chain(cur->chain, pfd) != 0) {
+            fprintf(stderr, "could not chain with proxy %s %s:%s\n", cur->chain->proto, cur->chain->host, cur->chain->port);
+            return -2;
+        }
+
+        cur = cur->chain;
     }
 
     return proxy_handler(proxy, cfd, pfd);
@@ -391,11 +403,13 @@ try_next_proxy:
 
         proxy_info *proxy = get_next_proxy();
 
-        printf("connection from %s through %s %s:%s\n", clihost, proxy->proto, proxy->host, proxy->port);
+        printf("connection from %s through proxy ", clihost);
+        print_proxy(proxy, stdout);
 
         int pfd = connect_proxy(proxy, timeout);
         if (pfd == -1) {
-            fprintf(stderr, "could not connect to proxy %s %s:%s\n", proxy->proto, proxy->host, proxy->port);
+            fprintf(stderr, "could not connect to proxy ");
+            print_proxy(proxy, stderr);
             if (retry) goto try_next_proxy;
             close(cfd);
             continue;

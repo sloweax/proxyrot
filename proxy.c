@@ -3,12 +3,21 @@
 #include "util.h"
 #include <ctype.h>
 #include <netdb.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 
+static int is_str_number(const char *str);
 static int parse_identifier(const char *str, char **field, char **endptr);
 static size_t get_identifier_len(const char *str, char **startptr);
+
+static int is_str_number(const char *str) {
+    while (*str) {
+        if (!isdigit(*str++)) return 0;
+    }
+    return 1;
+}
 
 int connect_proxy(const proxy_info *proxy, int timeout)
 {
@@ -41,27 +50,48 @@ free_err:
 int parse_proxy_info(const char *line, proxy_info *p)
 {
     memset(p, 0, sizeof(*p));
-    char *tmp;
+    char *tmp = (char*)line;
+    proxy_info *current_proxy = p;
 
-    int r = parse_identifier(line, &p->proto, &tmp);
-    if (r != 0 || p->proto == NULL) goto err;
-    if (!is_supported_proto(p->proto)) goto err;
+    for (;;) {
+        int r = parse_identifier(tmp, &current_proxy->proto, &tmp);
+        if (r != 0 || current_proxy->proto == NULL) goto err;
+        if (!is_supported_proto(current_proxy->proto)) goto err;
 
-    r = parse_identifier(tmp, &p->host, &tmp);
-    if (r != 0 || p->host == NULL) goto err;
+        r = parse_identifier(tmp, &current_proxy->host, &tmp);
+        if (r != 0 || current_proxy->host == NULL) goto err;
 
-    r = parse_identifier(tmp, &p->port, &tmp);
-    if (r != 0 || p->port == NULL) goto err;
+        r = parse_identifier(tmp, &current_proxy->port, &tmp);
+        if (r != 0 || current_proxy->port == NULL) goto err;
+        if (!is_str_number(current_proxy->port)) goto err;
 
-    if (strncmp(p->proto, "socks5", 6) == 0) {
-        r = parse_identifier(tmp, &p->user, &tmp);
-        if (r != 0) goto err;
+        if (strncmp(current_proxy->proto, "socks5", 6) == 0) {
+            if (get_identifier_len(tmp, &tmp) != 0 && *tmp == '|')
+                goto next_chain_proxy;
+            r = parse_identifier(tmp, &current_proxy->user, &tmp);
+            if (r != 0) goto err;
 
-        r = parse_identifier(tmp, &p->pass, &tmp);
-        if (r != 0) goto err;
+            if (get_identifier_len(tmp, &tmp) != 0 && *tmp == '|')
+                goto next_chain_proxy;
+            r = parse_identifier(tmp, &current_proxy->pass, &tmp);
+            if (r != 0) goto err;
+        }
+
+        if (get_identifier_len(tmp, &tmp) == 0 || *tmp == '#')
+            return 0;
+
+next_chain_proxy:
+
+        if (*tmp == '|') {
+            current_proxy->chain = calloc(1, sizeof(*current_proxy));
+            if (current_proxy->chain == NULL) goto err;
+            current_proxy = current_proxy->chain;
+            tmp++;
+            continue;
+        }
+
+        goto err;
     }
-
-    return 0;
 
 err:
     free_proxy_info(p);
@@ -70,11 +100,16 @@ err:
 
 void free_proxy_info(proxy_info *p)
 {
+    if (p->chain) {
+        free_proxy_info(p->chain);
+        free(p->chain);
+    }
     if (p->host)  free(p->host);
     if (p->port)  free(p->port);
     if (p->user)  free(p->user);
     if (p->pass)  free(p->pass);
     if (p->proto) free(p->proto);
+    p->chain = NULL;
     p->host = p->port = p->user = p->pass = p->proto = NULL;
 }
 
@@ -106,6 +141,11 @@ int is_supported_proto(const char *proto)
     return 0;
 }
 
+int proxy_chain(proxy_info *proxy, int pfd)
+{
+    return socks5_chain(proxy, pfd);
+}
+
 int proxy_auth(proxy_info *proxy, int pfd)
 {
     return socks5_auth(proxy, pfd);
@@ -114,4 +154,15 @@ int proxy_auth(proxy_info *proxy, int pfd)
 int proxy_handler(proxy_info *proxy, int cfd, int pfd)
 {
     return socks5_handler(proxy, cfd, pfd);
+}
+
+void print_proxy(proxy_info *proxy, FILE *f)
+{
+    printf("%s %s:%s", proxy->proto, proxy->host, proxy->port);
+    if (proxy->chain) {
+        printf(" | ");
+        print_proxy(proxy->chain, f);
+    } else {
+        puts("");
+    }
 }
