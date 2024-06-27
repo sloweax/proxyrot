@@ -1,4 +1,5 @@
 #include "proxy.h"
+#include "socks5.h"
 #include "util.h"
 #include <ctype.h>
 #include <netdb.h>
@@ -103,4 +104,14 @@ int is_supported_proto(const char *proto)
     if (strcmp(proto, "socks5")  == 0) return 1;
     if (strcmp(proto, "socks5h") == 0) return 1;
     return 0;
+}
+
+int proxy_auth(proxy_info *proxy, int pfd)
+{
+    return socks5_auth(proxy, pfd);
+}
+
+int proxy_handler(proxy_info *proxy, int cfd, int pfd)
+{
+    return socks5_handler(proxy, cfd, pfd);
 }

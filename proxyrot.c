@@ -286,11 +286,6 @@ static proxy_info *get_next_proxy(void)
     return proxy;
 }
 
-static int handler(proxy_info *proxy, int cfd, int pfd)
-{
-    return socks5_handler(proxy, cfd, pfd);
-}
-
 static int userpass_auth(int fd)
 {
     unsigned char buf[1 + 1 + 255 + 1 + 255];
@@ -341,6 +336,16 @@ static int auth(int fd)
     buf[1] = SOCKS5_INVALID_AUTH;
     write(fd, buf, 2);
     return -1;
+}
+
+static int handler(proxy_info *proxy, int cfd, int pfd)
+{
+    if (proxy_auth(proxy, pfd) != 0) {
+        fprintf(stderr, "auth negotiation with %s %s:%s failed\n", proxy->proto, proxy->host, proxy->port);
+        return -2;
+    }
+
+    return proxy_handler(proxy, cfd, pfd);
 }
 
 static void *work(void *arg)
