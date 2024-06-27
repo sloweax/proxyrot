@@ -8,7 +8,7 @@ OPTION:
      -n,--no-auth                   allow no auth authentication
      -u,--userpass USER:PASS        use USER:PASS as authentication
      -p,--port PORT                 listen on PORT (1080 by default)
-     -a,--addr ADDR                 bind on ADDR (0.0.0.0 by default)
+     -a,--addr ADDR                 bind on ADDR (127.0.0.1 by default)
      -w,--workers WORKERS           number of WORKERS (8 by default)
      -t,--timeout SECONDS           set timeout (10 by default)
      -r,--retry                     if proxy connection fail, try another

@@ -16,7 +16,7 @@
 
 #define VERSION "0.1.0"
 #define PORT "1080"
-#define ADDR "0.0.0.0"
+#define ADDR "127.0.0.1"
 #define WORKERS 8
 #define TIMEOUT 10
 
