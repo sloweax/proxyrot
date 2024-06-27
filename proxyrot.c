@@ -210,7 +210,7 @@ static void usage(int argc, char **argv)
         "     -p,--port PORT                 listen on PORT ("PORT" by default)\n"
         "     -a,--addr ADDR                 bind on ADDR ("ADDR" by default)\n"
         "     -w,--workers WORKERS           number of WORKERS (%d by default)\n"
-        "     -t,--timeout SECONDS           set timeout (%d by default)\n"
+        "     -t,--timeout SECONDS           set connection timeout (%d by default)\n"
         "     -r,--retry                     if proxy connection fail, try another\n"
     , argv[0], WORKERS, TIMEOUT);
 }
@@ -356,6 +356,10 @@ static int handler(proxy_info *proxy, int cfd, int pfd)
 
         cur = cur->chain;
     }
+
+    // After succesfull connection, remove timeout
+    config_socket(cfd, 0);
+    config_socket(pfd, 0);
 
     return proxy_handler(proxy, cfd, pfd);
 }
