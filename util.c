@@ -77,8 +77,11 @@ int bridge_fd(int fd1, int fd2)
         int e = poll(fds, 2, 2000);
         if (e == -1) return 1;
 
-        if ((fds[0].revents | fds[1].revents) & (POLLHUP | POLLERR | POLLNVAL))
+        if ((fds[0].revents | fds[1].revents) & POLLERR) {
+            if ((fds[0].revents | fds[1].revents) & POLLHUP)
+                return 0;
             return 1;
+        }
 
         if (fds[0].revents & POLLIN) {
             rn1 = read(fd1, buf, sizeof(buf));
