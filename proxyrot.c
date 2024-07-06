@@ -13,6 +13,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <sys/socket.h>
 #include <unistd.h>
 
 #define VERSION "0.1.0"
@@ -179,22 +180,26 @@ static int create_server(const char *host, const char *port, int backlog)
     if (sockfd == -1)
         goto error;
 
-    if (bind(sockfd, res->ai_addr, res->ai_addrlen) != 0) {
-        close(sockfd);
-        sockfd = -1;
-        goto error;
-    }
+    int optval = 1;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEADDR, &optval, sizeof(optval)) != 0)
+        goto error_close;
+    if (setsockopt(sockfd, SOL_SOCKET, SO_REUSEPORT, &optval, sizeof(optval)) != 0)
+        goto error_close;
 
-    if (res->ai_socktype != SOCK_DGRAM && listen(sockfd, backlog) != 0) {
-        close(sockfd);
-        sockfd = -1;
-        goto error;
-    }
+    if (bind(sockfd, res->ai_addr, res->ai_addrlen) != 0)
+        goto error_close;
 
-error:
+    if (res->ai_socktype != SOCK_DGRAM && listen(sockfd, backlog) != 0)
+        goto error_close;
 
     freeaddrinfo(res);
     return sockfd;
+
+error_close:
+    close(sockfd);
+error:
+    freeaddrinfo(res);
+    return -1;
 }
 
 static void usage(int argc, char **argv)
