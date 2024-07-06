@@ -12,7 +12,7 @@ typedef struct proxy_info {
     struct proxy_info *next;
 } proxy_info;
 
-void print_proxy(proxy_info *proxy, FILE *f);
+void sprint_proxy(proxy_info *proxy, char *str, size_t sz);
 int connect_proxy(const proxy_info *proxy, int timeout);
 int is_supported_proto(const char *proto);
 int parse_proxy_info(const char *line, proxy_info *p);

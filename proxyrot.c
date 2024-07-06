@@ -405,16 +405,14 @@ static void *work(void *arg)
         }
 
         for (;;) {
+            char proxy_str[4096];
             proxy_info *proxy = get_next_proxy();
-
-            printf("connection from %s through proxy ", clihost);
-            print_proxy(proxy, stdout);
+            sprint_proxy(proxy, proxy_str, sizeof(proxy_str));
+            printf("connection from %s through proxy %s\n", clihost, proxy_str);
 
             int pfd = connect_proxy(proxy, timeout);
             if (pfd == -1) {
-                fprintf(stderr, "could not connect to proxy ");
-                fflush(stderr);
-                print_proxy(proxy, stderr);
+                fprintf(stderr, "could not connect to proxy %s\n", proxy_str);
                 if (retry) continue;
                 close(cfd);
                 break;

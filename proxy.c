@@ -157,13 +157,17 @@ int proxy_handler(proxy_info *proxy, int cfd, int pfd)
     return socks5_handler(proxy, cfd, pfd);
 }
 
-void print_proxy(proxy_info *proxy, FILE *f)
+void sprint_proxy(proxy_info *proxy, char *str, size_t sz)
 {
-    printf("%s %s:%s", proxy->proto, proxy->host, proxy->port);
+    size_t written = snprintf(str, sz, "%s %s:%s", proxy->proto, proxy->host, proxy->port);
+    if (written >= sz) return;
+
     if (proxy->chain) {
-        printf(" | ");
-        print_proxy(proxy->chain, f);
-    } else {
-        puts("");
+        sz -= written;
+        str += written;
+        written = snprintf(str, sz, " | ");
+        if (written >= sz) return;
+
+        sprint_proxy(proxy->chain, str+written, sz-written);
     }
 }
