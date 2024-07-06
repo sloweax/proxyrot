@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "proxy.h"
 #include "socks5.h"
 #include "util.h"

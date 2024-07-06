@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "util.h"
 #include <poll.h>
 #include <pthread.h>
@@ -10,8 +11,11 @@
 
 void config_socket(int fd, int timeout)
 {
-    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &(struct timeval){.tv_sec = timeout}, sizeof(struct timeval));
-    setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &(struct timeval){.tv_sec = timeout}, sizeof(struct timeval));
+    struct timeval t;
+    t.tv_sec = timeout;
+    t.tv_usec = 0;
+    setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &t, sizeof(t));
+    setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &t, sizeof(t));
 }
 
 void *emalloc(size_t sz)

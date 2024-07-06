@@ -1,3 +1,4 @@
+#define _GNU_SOURCE
 #include "proxy.h"
 #include "socks5.h"
 #include "util.h"
@@ -403,29 +404,31 @@ static void *work(void *arg)
             continue;
         }
 
-try_next_proxy:
+        for (;;) {
+            proxy_info *proxy = get_next_proxy();
 
-        proxy_info *proxy = get_next_proxy();
+            printf("connection from %s through proxy ", clihost);
+            print_proxy(proxy, stdout);
 
-        printf("connection from %s through proxy ", clihost);
-        print_proxy(proxy, stdout);
+            int pfd = connect_proxy(proxy, timeout);
+            if (pfd == -1) {
+                fprintf(stderr, "could not connect to proxy ");
+                fflush(stderr);
+                print_proxy(proxy, stderr);
+                if (retry) continue;
+                close(cfd);
+                break;
+            }
 
-        int pfd = connect_proxy(proxy, timeout);
-        if (pfd == -1) {
-            fprintf(stderr, "could not connect to proxy ");
-            print_proxy(proxy, stderr);
-            if (retry) goto try_next_proxy;
-            close(cfd);
-            continue;
-        }
+            if (handler(proxy, cfd, pfd) == -2 && retry) {
+                close(pfd);
+                continue;
+            }
 
-        if (handler(proxy, cfd, pfd) == -2 && retry) {
             close(pfd);
-            goto try_next_proxy;
+            close(cfd);
+            break;
         }
-
-        close(pfd);
-        close(cfd);
     }
 
     return NULL;
