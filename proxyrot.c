@@ -364,8 +364,8 @@ static int handler(proxy_info *proxy, int cfd, int pfd)
     }
 
     // After succesfull connection, remove timeout
-    config_socket(cfd, 0);
-    config_socket(pfd, 0);
+    set_sock_timeout(cfd, 0);
+    set_sock_timeout(pfd, 0);
 
     return proxy_handler(proxy, cfd, pfd);
 }
@@ -389,7 +389,7 @@ static void *work(void *arg)
         if (cfd == -1)
             tdie("accept:");
 
-        config_socket(cfd, timeout);
+        set_sock_timeout(cfd, timeout);
 
         char clihost[INET6_ADDRSTRLEN];
         clihost[0] = 0;

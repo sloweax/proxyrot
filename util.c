@@ -9,10 +9,10 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-void config_socket(int fd, int timeout)
+void set_sock_timeout(int fd, int seconds)
 {
     struct timeval t;
-    t.tv_sec = timeout;
+    t.tv_sec = seconds;
     t.tv_usec = 0;
     setsockopt(fd, SOL_SOCKET, SO_RCVTIMEO, &t, sizeof(t));
     setsockopt(fd, SOL_SOCKET, SO_SNDTIMEO, &t, sizeof(t));

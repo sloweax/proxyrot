@@ -34,7 +34,7 @@ int proxy_connect(const proxy_info *proxy, int timeout)
     int fd = socket(res->ai_family, res->ai_socktype, res->ai_protocol);
     if (fd == -1) goto free_err;
 
-    config_socket(fd, timeout);
+    set_sock_timeout(fd, timeout);
 
     if (connect(fd, res->ai_addr, res->ai_addrlen) != 0) goto close_err;
 
