@@ -20,7 +20,7 @@ static int is_str_number(const char *str) {
     return 1;
 }
 
-int connect_proxy(const proxy_info *proxy, int timeout)
+int proxy_connect(const proxy_info *proxy, int timeout)
 {
     struct addrinfo hints, *res;
     memset(&hints, 0, sizeof(hints));

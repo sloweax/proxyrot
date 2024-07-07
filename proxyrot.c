@@ -415,7 +415,7 @@ static void *work(void *arg)
             sprint_proxy(proxy, proxy_str, sizeof(proxy_str));
             printf("connection from %s through proxy %s\n", clihost, proxy_str);
 
-            int pfd = connect_proxy(proxy, timeout);
+            int pfd = proxy_connect(proxy, timeout);
             if (pfd == -1) {
                 fprintf(stderr, "could not connect to proxy %s\n", proxy_str);
                 if (retry) continue;
