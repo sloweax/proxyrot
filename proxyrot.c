@@ -417,7 +417,7 @@ static void *work(void *arg)
 
             int pfd = proxy_connect(proxy, timeout);
             if (pfd == -1) {
-                fprintf(stderr, "could not connect to proxy %s\n", proxy_str);
+                fprintf(stderr, "could not connect to proxy %s %s:%s\n", proxy->proto, proxy->host, proxy->port);
                 if (retry) continue;
                 close(cfd);
                 break;
