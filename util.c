@@ -78,13 +78,12 @@ int bridge_fd(int fd1, int fd2)
     while (1) {
         rn1 = rn2 = fds[0].revents = fds[1].revents = 0;
 
-        int e = poll(fds, 2, 2000);
+        int e = poll(fds, 2, -1);
         if (e == -1) return 1;
 
         if ((fds[0].revents | fds[1].revents) & POLLERR) {
-            if ((fds[0].revents | fds[1].revents) & POLLHUP)
-                return 0;
-            return 1;
+            if (!((fds[0].revents | fds[1].revents) & POLLHUP))
+                return 1;
         }
 
         if (fds[0].revents & POLLIN) {
