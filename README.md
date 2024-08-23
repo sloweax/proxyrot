@@ -31,10 +31,14 @@ socks5 11.22.33.44 123 user pass
 socks5 proxy.com 1080 user
 # you can also chain proxies
 socks5 1.2.3.4 user pass | socks5 4.3.2.1
+```
 
-$ proxyrot -n -P proxies &
+```
+$ proxyrot -n -P proxies
 listening on 0.0.0.0:1080
+```
 
+```
 $ for i in {1..10}; do curl ifconfig.me -x socks5://127.0.0.1:1080; echo; done
 77.77.77.77
 11.22.33.44
