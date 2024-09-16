@@ -9,7 +9,7 @@ all: proxyrot
 	$(CC) $(CFLAGS) $< -c -o $@
 
 proxyrot: proxyrot.o util.o socks5.o proxy.o
-	$(CC) $(CFLAGS) $(LIBS) $^ -o $@
+	$(CC) $(CFLAGS) $^ $(LIBS) -o $@
 
 clean:
 	rm -f *.o *.out proxyrot
