@@ -5,7 +5,7 @@ BINDSTPATH=/usr/local/bin
 
 all: proxyrot
 
-debug: CFLAGS+= -g
+debug: CFLAGS+=-g
 debug: all
 
 %.o: %.c
