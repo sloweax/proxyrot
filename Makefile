@@ -1,5 +1,5 @@
 CC=cc
-CFLAGS=-Wall -Wextra
+CFLAGS=-std=c11 -Wall -Wextra
 LIBS=-lpthread
 BINDSTPATH=/usr/local/bin
 
