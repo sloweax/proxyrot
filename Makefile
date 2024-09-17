@@ -1,9 +1,12 @@
 CC=cc
-CFLAGS=-Wall -Wextra -g
+CFLAGS=-Wall -Wextra
 LIBS=-lpthread
 BINDSTPATH=/usr/local/bin
 
 all: proxyrot
+
+debug: CFLAGS+= -g
+debug: all
 
 %.o: %.c
 	$(CC) $(CFLAGS) $< -c -o $@
@@ -21,4 +24,4 @@ install: all
 uninstall:
 	rm -f $(BINDSTPATH)/proxyrot
 
-.PHONY: clean all install uninstall
+.PHONY: clean all install uninstall debug
